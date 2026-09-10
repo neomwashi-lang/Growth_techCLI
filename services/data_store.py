@@ -1,29 +1,32 @@
+"""
+services/data_store.py
+
+DataStore - no database, one JSON file per entity under data/, and only
+DataStore is allowed to touch those files directly.
+"""
 
 import json
 import os
 
+
 class DataStore:
-    def __init__(self, filepath):
-        self.filepath = filepath
+    def __init__(self, filename):
+        os.makedirs("data", exist_ok=True)
+        self.filename = os.path.join("data", filename)
+        if not os.path.exists(self.filename):
+            with open(self.filename, "w") as f:
+                json.dump([], f)
 
     def load(self):
-        if not os.path.exists(self.filepath):
-            return []
-        try:
-            with open(self.filepath, "r") as f:
-                return json.load(f)
-        except json.JSONDecodeError:
-            return []
+        with open(self.filename, "r") as f:
+            return json.load(f)
 
     def save(self, records):
-        # ensure the parent folder (e.g. "data/") exists before writing
-        folder = os.path.dirname(self.filepath)
-        if folder and not os.path.exists(folder):
-            os.makedirs(folder)
-        with open(self.filepath, "w") as f:
+        with open(self.filename, "w") as f:
             json.dump(records, f, indent=2)
 
-    def next_id(self, records):
+    @staticmethod
+    def next_id(records):
         if not records:
             return 1
-        return max(record["id"] for record in records) + 1
+        return max(r["id"] for r in records) + 1

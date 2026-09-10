@@ -1,58 +1,76 @@
+"""
+services/auth_manager.py
 
-import json
-import os
-from models.user import User
+AuthManager and the @login_required / @admin_required decorators.
+"""
+
+import functools
+
+from services.data_store import DataStore
+from models.user import User, AdminUser, RegularUser
+
 
 class AuthManager:
-    def __init__(self, users_store, session_path="data/session.json"):
-        self.users_store = users_store
-        self.session_path = session_path
+    def __init__(self):
+        self._store = DataStore("users.json")
+        self._session_user = None
 
-    def register(self, username, password):
-        users = self.users_store.load()
+    def register(self, username, password, is_admin=False):
+        records = self._store.load()
+        if any(r["username"] == username for r in records):
+            print(f"Username '{username}' is already taken.")
+            return None
 
-        if any(u["username"] ==username for u in users):
-            raise ValueError(f"Username '{username}' is already taken.")
-        
-        if not password or len(password) < 4:
-            raise ValueError("Password must be at least 4 characters.")
-
-        hashed, salt = User.hash_password(password)
-        new_id = self.users_store.next_id(users)
-        new_user = User(new_id, username, hashed, salt, role="user")
-
-        users.append(new_user.to_dict())
-        self.users_store.save(users)
-        return new_user
+        cls = AdminUser if is_admin else RegularUser
+        user = cls(username=username, password=password)
+        user.id = DataStore.next_id(records)
+        records.append(user.to_dict())
+        self._store.save(records)
+        print(f"Registered {'admin' if is_admin else 'user'} '{username}'.")
+        return user
 
     def login(self, username, password):
-        users = self.users_store.load()
-        match = next((u for u in users if u["username"] == username), None)
-
+        records = self._store.load()
+        match = next((r for r in records if r["username"] == username), None)
         if match is None:
-            raise ValueError("Invalid username or password.")
+            print("No such user.")
+            return None
 
         user = User.from_dict(match)
         if not user.check_password(password):
-            raise   ValueError("Invalid username or password.")
+            print("Incorrect password.")
+            return None
 
-        with open(self.session_path, "w") as f:
-            json.dump({"username": user.username}, f)
-
+        self._session_user = user
+        print(f"Logged in as '{username}'.")
         return user
 
     def logout(self):
-        if os.path.exists(self.session_path):
-            os.remove(self.session_path)
+        self._session_user = None
 
-    def get_current_user(self):
-        if not os.path.exists(self.session_path):
+    def current_user(self):
+        return self._session_user
+
+
+auth_manager = AuthManager()
+
+
+def login_required(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        if auth_manager.current_user() is None:
+            print("You must be logged in to do that.")
             return None
+        return func(*args, **kwargs)
+    return wrapper
 
-        with open(self.session_path, "r") as f:
-            session = json.load(f)
 
-        users = self.users_store.load()
-        match = next((u for u in users if u["username"] == session["username"]), None)
-
-        return User.from_dict(match) if match else None
+def admin_required(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        user = auth_manager.current_user()
+        if user is None or not user.is_admin:
+            print("Admin access required.")
+            return None
+        return func(*args, **kwargs)
+    return wrapper
