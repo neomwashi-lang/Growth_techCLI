@@ -20,7 +20,14 @@ class User:
     def hash_password(password, salt=None):
         if salt is None:
             salt = os.urandom(16).hex()
-        hashed = hashlib.sha256((salt + password).encode()).hexdigest()
+
+        hashed = hashlib.pbkdf2_hmac(
+            "sha256",
+            password.encode("utf-8"),
+            bytes.fromhex(salt),
+            100_000,
+        ).hex()
+
         return hashed, salt
 
     def check_password(self, password):
@@ -36,12 +43,12 @@ class User:
             "role": self.role,
         }
 
-    @classmethod
-    def from_dict(cls, d):
-        return cls(
-            id=d["id"],
-            username=d["username"],
-            password_hash=d["password_hash"],
-            salt=d["salt"],
-            role=d.get("role", "user"),
+    @staticmethod
+    def from_dict(data):
+        return User(
+            id=data["id"],
+            username=data["username"],
+            password_hash=data["password_hash"],
+            salt=data["salt"],
+            role=data["role"],
         )
