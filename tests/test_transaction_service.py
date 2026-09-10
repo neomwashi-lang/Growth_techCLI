@@ -6,7 +6,7 @@ import pytest
 
 import services.auth_manager as auth_module
 import services.transaction_service as txn_module
-from services.transaction_service import add_transaction, list_transactions
+from services.transaction_service import add_transaction, list_transactions, show_transaction
 
 
 @pytest.fixture(autouse=True)
@@ -71,3 +71,34 @@ def test_list_transactions_empty():
 def test_list_transactions_requires_login():
     auth_module.default_auth_manager.logout()
     assert list_transactions() is None
+
+
+# --- Story 5: Show Transaction ---
+
+def test_show_transaction_returns_correct_one():
+    t1 = add_transaction(amount=-10, category="Food", date="2026-09-01")
+    add_transaction(amount=-20, category="Rent", date="2026-09-02")
+
+    shown = show_transaction(t1.id)
+    assert shown.id == t1.id
+    assert shown.category == "Food"
+
+
+def test_show_transaction_nonexistent_returns_none():
+    assert show_transaction(9999) is None
+
+
+def test_show_transaction_wrong_owner_returns_none():
+    t1 = add_transaction(amount=-10, category="Food", date="2026-09-01")
+
+    # add a second user and try to view the first user's transaction
+    auth = auth_module.default_auth_manager
+    auth.register("otheruser", "password123")
+    auth.login("otheruser", "password123")
+
+    assert show_transaction(t1.id) is None
+
+
+def test_show_transaction_requires_login():
+    auth_module.default_auth_manager.logout()
+    assert show_transaction(1) is None
