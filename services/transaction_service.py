@@ -32,38 +32,3 @@ def add_transaction(amount, category, date, description=""):
     _store.save(records)
     print(f"Added transaction #{txn.id}: {category} {amount} on {date}")
     return txn
-
-
-@login_required(default_auth_manager)
-def list_transactions():
-    """Story 4: List Transactions (only the current user's own)."""
-    user = default_auth_manager.get_current_user()
-    records = _store.load()
-    mine = [r for r in records if r["user"] == user.username]
-
-    if not mine:
-        print("No transactions yet.")
-        return []
-
-    for r in mine:
-        print(f"#{r['id']}  {r['date']}  {r['category']:<15} {r['amount']:>10}  {r['description']}")
-    return [Transaction.from_dict(r) for r in mine]
-
-
-@login_required(default_auth_manager)
-def show_transaction(txn_id):
-    """Story 5: Show a single Transaction (must belong to current user)."""
-    user = default_auth_manager.get_current_user()
-    records = _store.load()
-    match = next((r for r in records if r["id"] == txn_id), None)
-
-    if match is None:
-        print(f"No transaction with id {txn_id}.")
-        return None
-    if match["user"] != user.username:
-        print("That transaction doesn't belong to you.")
-        return None
-
-    txn = Transaction.from_dict(match)
-    print(txn)
-    return txn
