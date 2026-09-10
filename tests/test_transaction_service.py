@@ -12,14 +12,15 @@ from services.transaction_service import add_transaction, list_transactions
 @pytest.fixture(autouse=True)
 def clean_state():
     txn_module._store.save([])
-    auth_module.auth_manager._store.save([])
-    auth_module.auth_manager.logout()
-    auth_module.auth_manager.register("testuser", "password123")
-    auth_module.auth_manager.login("testuser", "password123")
+    auth = auth_module.default_auth_manager
+    auth.users_store.save([])
+    auth.logout()
+    auth.register("testuser", "password123")
+    auth.login("testuser", "password123")
     yield
     txn_module._store.save([])
-    auth_module.auth_manager._store.save([])
-    auth_module.auth_manager.logout()
+    auth.users_store.save([])
+    auth.logout()
 
 
 def test_add_transaction_creates_record():
@@ -41,7 +42,7 @@ def test_add_transaction_ids_increment():
 
 
 def test_add_transaction_requires_login():
-    auth_module.auth_manager.logout()
+    auth_module.default_auth_manager.logout()
     result = add_transaction(amount=-10, category="Food", date="2026-09-01")
     assert result is None
     assert txn_module._store.load() == []
@@ -52,7 +53,6 @@ def test_add_transaction_requires_login():
 def test_list_transactions_returns_only_current_user():
     add_transaction(amount=-10, category="Food", date="2026-09-01")
 
-    # a transaction belonging to someone else shouldn't show up
     txn_module._store.save(txn_module._store.load() + [{
         "id": 999, "user": "someone_else", "amount": -5,
         "category": "Food", "date": "2026-09-01", "description": "not mine",
@@ -69,5 +69,5 @@ def test_list_transactions_empty():
 
 
 def test_list_transactions_requires_login():
-    auth_module.auth_manager.logout()
+    auth_module.default_auth_manager.logout()
     assert list_transactions() is None

@@ -1,76 +1,76 @@
 """
 services/auth_manager.py
 
-AuthManager and the @login_required / @admin_required decorators.
+AuthManager - takes an existing DataStore for users, plus a session_path
+where the logged-in user's id is written. The session file is what lets
+a login survive between separate `python main.py <command>` runs, since
+each invocation is a fresh process with nothing in memory.
 """
 
-import functools
+import json
+import os
 
-from services.data_store import DataStore
-from models.user import User, AdminUser, RegularUser
+from models.user import User
 
 
 class AuthManager:
-    def __init__(self):
-        self._store = DataStore("users.json")
-        self._session_user = None
+    def __init__(self, users_store, session_path):
+        self.users_store = users_store
+        self.session_path = session_path
 
-    def register(self, username, password, is_admin=False):
-        records = self._store.load()
-        if any(r["username"] == username for r in records):
-            print(f"Username '{username}' is already taken.")
-            return None
+    def register(self, username, password, role="user"):
+        users = self.users_store.load()
+        if any(u["username"] == username for u in users):
+            raise ValueError(f"Username '{username}' is already taken.")
+        if not password or len(password) < 4:
+            raise ValueError("Password must be at least 4 characters.")
 
-        cls = AdminUser if is_admin else RegularUser
-        user = cls(username=username, password=password)
-        user.id = DataStore.next_id(records)
-        records.append(user.to_dict())
-        self._store.save(records)
-        print(f"Registered {'admin' if is_admin else 'user'} '{username}'.")
+        hashed, salt = User.hash_password(password)
+        new_id = self.users_store.next_id(users)
+        user = User(new_id, username, hashed, salt, role=role)
+
+        users.append(user.to_dict())
+        self.users_store.save(users)
         return user
 
     def login(self, username, password):
-        records = self._store.load()
-        match = next((r for r in records if r["username"] == username), None)
+        users = self.users_store.load()
+        match = next((u for u in users if u["username"] == username), None)
         if match is None:
-            print("No such user.")
-            return None
+            raise ValueError("No such user.")
 
         user = User.from_dict(match)
         if not user.check_password(password):
-            print("Incorrect password.")
-            return None
+            raise ValueError("Incorrect password.")
 
-        self._session_user = user
-        print(f"Logged in as '{username}'.")
+        self._save_session(user)
         return user
 
     def logout(self):
-        self._session_user = None
+        if os.path.exists(self.session_path):
+            os.remove(self.session_path)
 
-    def current_user(self):
-        return self._session_user
-
-
-auth_manager = AuthManager()
-
-
-def login_required(func):
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        if auth_manager.current_user() is None:
-            print("You must be logged in to do that.")
+    def get_current_user(self):
+        if not os.path.exists(self.session_path):
             return None
-        return func(*args, **kwargs)
-    return wrapper
+        with open(self.session_path, "r") as f:
+            session = json.load(f)
 
-
-def admin_required(func):
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        user = auth_manager.current_user()
-        if user is None or not user.is_admin:
-            print("Admin access required.")
+        users = self.users_store.load()
+        match = next((u for u in users if u["id"] == session["id"]), None)
+        if match is None:
             return None
-        return func(*args, **kwargs)
-    return wrapper
+        return User.from_dict(match)
+
+    def _save_session(self, user):
+        with open(self.session_path, "w") as f:
+            json.dump({"id": user.id, "username": user.username}, f)
+
+
+# ASSUMPTION — check this against your real main.py: your commands need
+# one shared AuthManager so a login in one command is visible to the next
+# CLI run. If main.py already builds its own AuthManager, use that one
+# instead and delete the two lines below.
+from services.data_store import DataStore
+
+default_auth_manager = AuthManager(DataStore("users.json"), session_path="data/session.json")
