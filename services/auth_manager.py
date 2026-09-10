@@ -5,7 +5,7 @@ from models.user import User
 
 class AuthManager:
     def __init__(self, users_store, session_path="data/session.json"):
-        self.users_store = users_store
+        self.user_store = users_store
         self.session_path = session_path
 
     def register(self, username, password):
@@ -18,7 +18,7 @@ class AuthManager:
             raise ValueError("Password must be at least 4 characters.")
 
         hashed, salt = User.hash_password(password)
-        new_id = self.users_store.next_id(users)
+        new_id = self.user_store.next_id(users)
         new_user = User(new_id, username, hashed, salt, role="user")
 
         users.append(new_user.to_dict())
@@ -52,7 +52,7 @@ class AuthManager:
         with open(self.session_path, "r") as f:
             session = json.load(f)
 
-        users = self.users_store.load()
+        users = self.user_store.load()
         match = next((u for u in users if u["username"] == session["username"]), None)
 
         return User.from_dict(match) if match else None
