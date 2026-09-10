@@ -6,20 +6,21 @@ import pytest
 
 import services.auth_manager as auth_module
 import services.transaction_service as txn_module
-from services.transaction_service import add_transaction
+from services.transaction_service import add_transaction, list_transactions, show_transaction
 
 
 @pytest.fixture(autouse=True)
 def clean_state():
     txn_module._store.save([])
-    auth_module.auth_manager._store.save([])
-    auth_module.auth_manager.logout()
-    auth_module.auth_manager.register("testuser", "password123")
-    auth_module.auth_manager.login("testuser", "password123")
+    auth = auth_module.default_auth_manager
+    auth.users_store.save([])
+    auth.logout()
+    auth.register("testuser", "password123")
+    auth.login("testuser", "password123")
     yield
     txn_module._store.save([])
-    auth_module.auth_manager._store.save([])
-    auth_module.auth_manager.logout()
+    auth.users_store.save([])
+    auth.logout()
 
 
 def test_add_transaction_creates_record():
@@ -41,7 +42,7 @@ def test_add_transaction_ids_increment():
 
 
 def test_add_transaction_requires_login():
-    auth_module.auth_manager.logout()
+    auth_module.default_auth_manager.logout()
     result = add_transaction(amount=-10, category="Food", date="2026-09-01")
     assert result is None
     assert txn_module._store.load() == []
