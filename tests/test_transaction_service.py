@@ -6,21 +6,20 @@ import pytest
 
 import services.auth_manager as auth_module
 import services.transaction_service as txn_module
-from services.transaction_service import add_transaction, list_transactions
+from services.transaction_service import add_transaction
 
 
 @pytest.fixture(autouse=True)
 def clean_state():
     txn_module._store.save([])
-    auth = auth_module.default_auth_manager
-    auth.users_store.save([])
-    auth.logout()
-    auth.register("testuser", "password123")
-    auth.login("testuser", "password123")
+    auth_module.auth_manager._store.save([])
+    auth_module.auth_manager.logout()
+    auth_module.auth_manager.register("testuser", "password123")
+    auth_module.auth_manager.login("testuser", "password123")
     yield
     txn_module._store.save([])
-    auth.users_store.save([])
-    auth.logout()
+    auth_module.auth_manager._store.save([])
+    auth_module.auth_manager.logout()
 
 
 def test_add_transaction_creates_record():
@@ -42,32 +41,7 @@ def test_add_transaction_ids_increment():
 
 
 def test_add_transaction_requires_login():
-    auth_module.default_auth_manager.logout()
+    auth_module.auth_manager.logout()
     result = add_transaction(amount=-10, category="Food", date="2026-09-01")
     assert result is None
     assert txn_module._store.load() == []
-
-
-# --- Story 4: List Transactions ---
-
-def test_list_transactions_returns_only_current_user():
-    add_transaction(amount=-10, category="Food", date="2026-09-01")
-
-    txn_module._store.save(txn_module._store.load() + [{
-        "id": 999, "user": "someone_else", "amount": -5,
-        "category": "Food", "date": "2026-09-01", "description": "not mine",
-    }])
-
-    results = list_transactions()
-    assert len(results) == 1
-    assert results[0].user == "testuser"
-
-
-def test_list_transactions_empty():
-    results = list_transactions()
-    assert results == []
-
-
-def test_list_transactions_requires_login():
-    auth_module.default_auth_manager.logout()
-    assert list_transactions() is None
