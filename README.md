@@ -1,134 +1,52 @@
 # Growth_techCLI
+# 1. Neo Mwashi
+# 2. Ryan Ng'ang'a
+# 3. Emmanuel Wema
 
-**Team**
-1. Neo Mwashi
-2. Ryan Ng'ang'a
-3. Emmanuel Wema
+# Personal Finance Tracker — CLI Application
 
-## Personal Finance Tracker — CLI Application
+Task 1 (Define the Problem) deliverable, expressed as Python instead of prose.
+Nothing here executes real logic — every class/function is a stub. Real
+behavior is built in Task 3 (Develop the Code).
 
-A command-line tool for tracking income, expenses, categories, and budgets,
-with role-based access separating regular users from admins.
+## Files
 
-Task 1 (Define the Problem) is complete — see the user stories on our
-[Trello board]. This README now reflects real, working code, not stubs —
-the authentication foundation (Stories 1, 2, and 10) is implemented and
-tested. Transaction, category, and budget features (Stories 3–9) are in
-progress.
-
-## Project structure
-Growth_techCLI/
-├── main.py # CLI entry point (argparse) — in progress
-├── models/
-│ └── user.py # User class: hashing, serialization
-├── services/
-│ ├── data_store.py # Generic JSON load/save/next_id, reused by every model
-│ └── auth_manager.py # register(), login(), logout(), get_current_user()
-├── utils/
-│ └── decorators.py # @login_required, @admin_required
-├── scripts/
-│ └── create_admin.py # Standalone script to bootstrap an admin account
-├── tests/ # pytest suite — 23 tests, all passing
-├── data/ # JSON persistence (users.json, session.json, ...)
-├── requirements.txt
-└── pytest.ini
-
-
-## Setup
-
-```bash
-git clone <repo-url>
-cd Growth_techCLI
-python -m venv venv
-# Windows:
-.\venv\Scripts\Activate.ps1
-# macOS/Linux:
-source venv/bin/activate
-
-pip install -r requirements.txt
-```
-
-## Running the tests
-
-```bash
-python -m pytest -v
-```
-
-Should show 23 passed. Test coverage so far: password hashing and
-serialization (`User`), generic file persistence (`DataStore`), the full
-registration/login/logout/session lifecycle (`AuthManager`), and both
-access-control decorators (`login_required`, `admin_required`).
-
-## Creating an admin account
-
-Admin accounts are **not** created through normal registration —
-`AuthManager.register()` always assigns the `"user"` role, and there is no
-CLI command or self-promotion path to become an admin. This is intentional:
-admin status is only granted by someone with direct file access to the
-project, running:
-
-```bash
-python scripts/create_admin.py
-```
-
-You'll be prompted for a username and password; the account is created
-directly with `role="admin"`.
+| File | Proposal sections | What it holds |
+|---|---|---|
+| `proposal_1_3_overview.py` | 1–3 | Problem definition, target users, core feature list |
+| `proposal_4_6_design.py` | 4–6 | Entities and planned classes (`User`, `AdminUser`, `RegularUser`, `Transaction`, `Category`, `Budget`), plus the `DataStore` class documenting the JSON storage plan |
+| `proposal_7_8_strategy.py` | 7–8 | `AuthManager` and the `login_required`/`admin_required` decorator stubs for the authentication strategy, plus the Git workflow plan as a module-level string |
 
 ## Design at a glance
 
-- **Roles:** `User` has a single `role` field (`"user"` or `"admin"`),
-  checked by the `@admin_required` decorator — not separate `AdminUser`/
-  `RegularUser` subclasses. (We considered a `Person → User` inheritance
-  chain per the assignment's OOP guidance; current design keeps role as
-  an attribute for simplicity. Open to revisiting before submission.)
-- **Storage:** no database — one JSON file per entity under `data/`, and
-  `DataStore` is the only class that reads or writes those files directly.
-  Every model (`User`, and soon `Transaction`/`Category`/`Budget`) converts
-  itself to/from a plain dict via `to_dict()`/`from_dict()`.
-- **Passwords:** hashed with `pbkdf2_hmac` and a random salt before ever
-  touching disk — plaintext passwords are never stored.
-- **Sessions:** `login()` writes `data/session.json`, so a session persists
-  across separate CLI invocations (matching real CLI tools like `git`,
-  rather than requiring one long-running interactive process). `logout()`
-  clears it.
-- **Access control:** `@login_required` and `@admin_required` (in
-  `utils/decorators.py`) wrap command functions. Both print a message and
-  return without running the command if the check fails, rather than
-  raising an exception — the CLI keeps running either way.
-- **Git:** `main` and `secBranch` stay protected; all work happens on
-  feature branches, merged into `secBranch` only through a reviewed PR.
+- **Roles:** `AdminUser` and `RegularUser` both extend `User` — shared account
+  fields live once in the base class, role-specific behavior is added on top.
+- **Storage:** no database — one JSON file per entity under `data/`, and only
+  `DataStore` is allowed to touch those files directly.
+- **Auth:** passwords are salted and hashed before they ever reach disk;
+  a successful login opens a short session that the `@login_required` and
+  `@admin_required` decorators check before running a command.
+- **Git:** `main` stays protected; all work happens on `feature/<area>`
+  branches, merged only through a reviewed pull request.
 
-## Authentication strategy
+## Running the stubs
 
-- Registration stores only a PBKDF2-HMAC-SHA256 digest and a unique random
-  salt in `data/users.json`; plaintext passwords are never persisted or logged.
-- Login derives the digest again from the stored salt and compares it with a
-  constant-time digest comparison. A successful login writes a short-lived
-  session containing the user id, username, role, and expiry time to
-  `data/session.json`.
-- CLI commands use `@login_required` and `@admin_required` from
-  `utils/decorators.py`, keeping authentication and authorization outside the
-  command implementations.
+Each file can be run on its own to print the plan it documents:
 
-## Git workflow
+```bash
+python3 proposal_1_3_overview.py
+python3 proposal_7_8_strategy.py
+```
 
-- `main` is protected and deployable. Work is done on feature branches such
-  as `feature/auth`, `feature/transactions`, `feature/budgets`, or
-  `feature/reports`.
-- Each branch maps to a Trello/Jira issue tagged `feature`, `bug`, or `chore`.
-  User-facing work follows the GIVEN/WHEN/THEN story format.
-- Every feature branch reaches `main` through a pull request with at least one
-  teammate review. CI runs lint and tests on every pull request.
-- Commits use short imperative messages, for example
-  `Add budget vs. actual report`.
+`proposal_4_6_design.py` is meant to be imported, not run directly — it just
+defines the classes:
 
-## Known gaps / in progress
-
-- Transaction, category, and budget commands (Stories 3–9) — not yet built
-- Decision pending: whether to introduce `Person → User` inheritance for
-  the OOP rubric credit
+```bash
+python3 -c "import proposal_4_6_design as m; print(m.User, m.DataStore)"
+```
 
 ## Next step
 
-Wire `main.py`'s subcommands (`register`, `login`, `logout`, `add`,
-`list`, `report`, etc.) to the classes and decorators above, per Task 3.
+Task 2 (Determine the Design) turns these stubs into an actual command
+surface with `argparse`; Task 3 fills in the `NotImplementedError` bodies
+with real logic.
