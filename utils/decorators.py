@@ -1,6 +1,10 @@
 
+from functools import wraps
+
+
 def login_required(auth_manager):
     def decorator(func):
+        @wraps(func)
         def wrapper(*args, **kwargs):
             user = auth_manager.get_current_user()
             if user is None:
@@ -13,12 +17,13 @@ def login_required(auth_manager):
 
 def admin_required(auth_manager):
     def decorator(func):
+        @wraps(func)
         def wrapper(*args, **kwargs):
             user = auth_manager.get_current_user()
             if user is None:
                 print("You must be logged in to run this command.")
                 return
-            if user.role != "admin":
+            if user.role.lower() != "admin":
                 print("You do not have permission to run this command.")
                 return
             return func(*args, **kwargs)
