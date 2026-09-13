@@ -8,6 +8,8 @@ from services.data_store import DataStore
 from services.auth_manager import default_auth_manager
 from utils.decorators import admin_required
 from models.transaction import Category
+from tabulate import tabulate
+
 
 _store = DataStore("categories.json")
 
@@ -32,8 +34,8 @@ def list_categories():
     if not records:
         print("No categories yet.")
         return []
-    for r in records:
-        print(f"#{r['id']}  {r['name']}")
+    rows = [[r["id"], r["name"]] for r in records]
+    print(tabulate(rows, headers=["ID", "Name"]))
     return [Category.from_dict(r) for r in records]
 
 

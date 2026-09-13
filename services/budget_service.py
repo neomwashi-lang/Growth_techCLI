@@ -15,6 +15,7 @@ from services.data_store import DataStore
 from services.auth_manager import default_auth_manager
 from utils.decorators import login_required
 from models.budget import Budget
+from tabulate import tabulate
 
 _store = DataStore("budgets.json")
 
@@ -66,6 +67,6 @@ def list_budgets():
         print("No budgets set yet.")
         return []
 
-    for r in mine:
-        print(f"{r['category']:<15} {r['month']}  limit={r['limit']}")
+    rows = [[r["category"], r["month"], r["limit"]] for r in mine]
+    print(tabulate(rows, headers=["Category", "Month", "Limit"]))
     return [Budget.from_dict(r) for r in mine]

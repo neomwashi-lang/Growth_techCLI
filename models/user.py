@@ -9,8 +9,18 @@ import hmac
 import os
 
 
-class User:
+class Person:
+    """Base class for anyone the system knows about by name."""
+
+    def __init__(self, name):
+        self.name = name
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__} {self.name}>"
+
+class User(Person):
     def __init__(self, id, username, password_hash, salt, role="user"):
+        super().__init__(username)
         self.id = id
         self.username = username
         self.password_hash = password_hash

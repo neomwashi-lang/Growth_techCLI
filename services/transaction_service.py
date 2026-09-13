@@ -11,6 +11,7 @@ from services.data_store import DataStore
 from services.auth_manager import default_auth_manager
 from utils.decorators import login_required
 from models.transaction import Transaction
+from tabulate import tabulate
 
 _store = DataStore("transactions.json")
 
@@ -45,9 +46,10 @@ def list_transactions():
     if not mine:
         print("No transactions yet.")
         return []
+    
+    rows = [[r["id"], r["date"], r["category"], r["amount"], r["description"]] for r in mine]
+    print(tabulate(rows, headers=["ID", "Date", "Category", "Amount", "Description"]))
 
-    for r in mine:
-        print(f"#{r['id']}  {r['date']}  {r['category']:<15} {r['amount']:>10}  {r['description']}")
     return [Transaction.from_dict(r) for r in mine]
 
 
