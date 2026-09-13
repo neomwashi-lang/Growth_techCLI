@@ -40,11 +40,11 @@ class AuthManager:
         users = self.users_store.load()
         match = next((u for u in users if u["username"] == username), None)
         if match is None:
-            raise ValueError("No such user.")
+            raise ValueError("Invalid username or password.")
 
         user = User.from_dict(match)
         if not user.check_password(password):
-            raise ValueError("Incorrect password.")
+            raise ValueError("Invalid username or password.")
 
         self._save_session(user)
         return user

@@ -6,21 +6,20 @@ import pytest
 
 import services.auth_manager as auth_module
 import services.category_service as cat_module
+from services.data_store import DataStore
 from services.category_service import add_category, list_categories, edit_category, delete_category
 
 
 @pytest.fixture(autouse=True)
-def clean_state():
-    cat_module._store.save([])
+def clean_state(tmp_path, monkeypatch):
     auth = auth_module.default_auth_manager
-    auth.users_store.save([])
-    auth.logout()
+    monkeypatch.setattr(auth, "users_store", DataStore(tmp_path / "users.json"))
+    monkeypatch.setattr(auth, "session_path", tmp_path / "session.json")
+    monkeypatch.setattr(cat_module, "_store", DataStore(tmp_path / "categories.json"))
+
     auth.register("testadmin", "password123", role="admin")
     auth.login("testadmin", "password123")
     yield
-    cat_module._store.save([])
-    auth.users_store.save([])
-    auth.logout()
 
 
 def test_add_category_creates_record():

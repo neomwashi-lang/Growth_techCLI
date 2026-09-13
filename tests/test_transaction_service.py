@@ -6,21 +6,20 @@ import pytest
 
 import services.auth_manager as auth_module
 import services.transaction_service as txn_module
+from services.data_store import DataStore
 from services.transaction_service import add_transaction, list_transactions, show_transaction, edit_transaction, delete_transaction
 
 
 @pytest.fixture(autouse=True)
-def clean_state():
-    txn_module._store.save([])
+def clean_state(tmp_path, monkeypatch):
     auth = auth_module.default_auth_manager
-    auth.users_store.save([])
-    auth.logout()
+    monkeypatch.setattr(auth, "users_store", DataStore(tmp_path / "users.json"))
+    monkeypatch.setattr(auth, "session_path", tmp_path / "session.json")
+    monkeypatch.setattr(txn_module, "_store", DataStore(tmp_path / "transactions.json"))
+
     auth.register("testuser", "password123")
     auth.login("testuser", "password123")
     yield
-    txn_module._store.save([])
-    auth.users_store.save([])
-    auth.logout()
 
 
 def test_add_transaction_creates_record():
