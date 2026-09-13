@@ -9,11 +9,14 @@ each invocation is a fresh process with nothing in memory.
 
 import json
 import os
+import time
 
 from models.user import User
 
 
 class AuthManager:
+    SESSION_TTL_SECONDS = 8 * 60 * 60
+
     def __init__(self, users_store, session_path):
         self.users_store = users_store
         self.session_path = session_path
@@ -53,18 +56,37 @@ class AuthManager:
     def get_current_user(self):
         if not os.path.exists(self.session_path):
             return None
-        with open(self.session_path, "r") as f:
-            session = json.load(f)
+        try:
+            with open(self.session_path, "r") as f:
+                session = json.load(f)
+        except (OSError, json.JSONDecodeError, TypeError):
+            return None
+
+        if not isinstance(session, dict) or session.get("expires_at", 0) <= time.time():
+            self.logout()
+            return None
 
         users = self.users_store.load()
-        match = next((u for u in users if u["id"] == session["id"]), None)
+        session_id = session.get("id")
+        match = next((u for u in users if u["id"] == session_id), None)
         if match is None:
             return None
         return User.from_dict(match)
 
     def _save_session(self, user):
+        session_directory = os.path.dirname(os.fspath(self.session_path))
+        if session_directory:
+            os.makedirs(session_directory, exist_ok=True)
         with open(self.session_path, "w") as f:
-            json.dump({"id": user.id, "username": user.username}, f)
+            json.dump(
+                {
+                    "id": user.id,
+                    "username": user.username,
+                    "role": user.role,
+                    "expires_at": time.time() + self.SESSION_TTL_SECONDS,
+                },
+                f,
+            )
 
 
 # ASSUMPTION — check this against your real main.py: your commands need

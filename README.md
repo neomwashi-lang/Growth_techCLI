@@ -98,10 +98,33 @@ directly with `role="admin"`.
 - **Git:** `main` and `secBranch` stay protected; all work happens on
   feature branches, merged into `secBranch` only through a reviewed PR.
 
+## Authentication strategy
+
+- Registration stores only a PBKDF2-HMAC-SHA256 digest and a unique random
+  salt in `data/users.json`; plaintext passwords are never persisted or logged.
+- Login derives the digest again from the stored salt and compares it with a
+  constant-time digest comparison. A successful login writes a short-lived
+  session containing the user id, username, role, and expiry time to
+  `data/session.json`.
+- CLI commands use `@login_required` and `@admin_required` from
+  `utils/decorators.py`, keeping authentication and authorization outside the
+  command implementations.
+
+## Git workflow
+
+- `main` is protected and deployable. Work is done on feature branches such
+  as `feature/auth`, `feature/transactions`, `feature/budgets`, or
+  `feature/reports`.
+- Each branch maps to a Trello/Jira issue tagged `feature`, `bug`, or `chore`.
+  User-facing work follows the GIVEN/WHEN/THEN story format.
+- Every feature branch reaches `main` through a pull request with at least one
+  teammate review. CI runs lint and tests on every pull request.
+- Commits use short imperative messages, for example
+  `Add budget vs. actual report`.
+
 ## Known gaps / in progress
 
 - Transaction, category, and budget commands (Stories 3–9) — not yet built
-- `main.py`'s argparse subcommands are not yet wired to the auth layer
 - Decision pending: whether to introduce `Person → User` inheritance for
   the OOP rubric credit
 

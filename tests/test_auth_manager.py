@@ -1,6 +1,7 @@
 
 from services.data_store import DataStore
 from services.auth_manager import AuthManager
+import json
 
 def make_auth(tmp_path):
     users_store = DataStore(tmp_path / "users.json")
@@ -71,3 +72,22 @@ def test_logout_clears_session(tmp_path):
     auth.login("neo", "hunter2")
     auth.logout()
     assert auth.get_current_user() is None
+
+def test_session_records_username_role_and_expiry(tmp_path):
+    auth = make_auth(tmp_path)
+    auth.register("neo", "hunter2")
+    auth.login("neo", "hunter2")
+    with open(auth.session_path) as session_file:
+        session = json.load(session_file)
+    assert session["username"] == "neo"
+    assert session["role"] == "user"
+    assert session["expires_at"] > 0
+
+def test_expired_session_is_removed(tmp_path):
+    auth = make_auth(tmp_path)
+    auth.register("neo", "hunter2")
+    auth.login("neo", "hunter2")
+    with open(auth.session_path, "w") as session_file:
+        json.dump({"id": 1, "username": "neo", "role": "user", "expires_at": 0}, session_file)
+    assert auth.get_current_user() is None
+    assert not auth.session_path.exists()
