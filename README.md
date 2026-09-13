@@ -15,7 +15,7 @@ with role-based access separating regular users from admins.
     Growth_techCLI/
     ├── main.py                    # CLI entry point (argparse) — wired end to end
     ├── models/
-    │   ├── user.py                # User class: hashing, serialization
+    │   ├── user.py                # Person base class, User (extends Person)
     │   ├── transaction.py         # Transaction and Category classes
     │   └── budget.py              # Budget class
     ├── services/
@@ -102,19 +102,33 @@ Example session:
 
 ## Design at a glance
 
-- **Roles:** `User.role` is `"user"` or `"admin"`, checked by
-  `@admin_required` — not separate `AdminUser`/`RegularUser` subclasses.
-  (Considered `Person → User` inheritance for the assignment's OOP
-  guidance; see Known gaps.)
+- **OOP:** `User` extends a `Person` base class, separating identity (a
+  name) from account/auth concerns (credentials, role). `role` is a plain
+  string (`"user"` or `"admin"`) checked by the `@admin_required`
+  decorator, rather than separate `AdminUser`/`RegularUser` subclasses.
 - **Storage:** no database — one JSON file per entity under `data/`, and
   `DataStore` is the only class that reads or writes those files directly.
   Every model converts itself to/from a plain dict via
   `to_dict()`/`from_dict()`. Budgets are stored as flat records filtered
   by `(user, category, month)` rather than a composite dictionary key,
   keeping the same pattern used for transactions and categories.
+- **Passwords:** hashed with `pbkdf2_hmac` (100,000 iterations) and a
+  random per-user salt — plaintext passwords are never stored. Password
+  verification uses a constant-time comparison (`hmac.compare_digest`) to
+  avoid leaking timing information.
+- **Sessions:** `login()` writes a short-lived session (user id, username,
+  role, 8-hour expiry) to `data/session.json`, so a login persists across
+  separate CLI invocations. Expired sessions are detected and cleared
+  automatically on the next command.
+- **Access control:** `@login_required` and `@admin_required` (in
+  `utils/decorators.py`) wrap command functions, printing a message and
+  returning without running the command if the check fails.
 - **Ownership:** transactions and budgets are only visible/editable by the
   user who created them, enforced in their respective services and tested
   against a second "wrong owner" account.
+- **CLI output:** rendered with `rich` — colored success/error messages,
+  styled tables for transaction/category/budget listings, and a
+  color-coded over-budget warning in the spending report.
 - **Git:** all work happens on feature branches, merged into `secBranch`
   only through a reviewed pull request.
 
@@ -124,11 +138,13 @@ Example session:
   salt in `data/users.json`; plaintext passwords are never persisted or
   logged.
 - Login derives the digest again from the stored salt and compares it
-  using a constant-time digest comparison (`hmac.compare_digest`), which
-  avoids leaking timing information about a partially-correct password.
-- A successful login writes a short-lived session (user id, username,
-  role, and an 8-hour expiry) to `data/session.json`. Expired sessions are
-  detected and cleared automatically on the next command.
+  using a constant-time digest comparison, avoiding timing-based leaks
+  about a partially-correct password.
+- A successful login writes a short-lived session to `data/session.json`.
+  Admin accounts are never created through registration or any CLI
+  command — only via `scripts/create_admin.py`, run directly by someone
+  with file-system access to the project, preventing self-promotion to
+  admin.
 - CLI commands use `@login_required` and `@admin_required` from
   `utils/decorators.py`, keeping authentication and authorization out of
   the command implementations themselves.
@@ -140,14 +156,8 @@ Example session:
   merged into `secBranch` through a reviewed pull request.
 - Commits use short, imperative messages describing what changed and why.
 
-## Known gaps
-
-- Decision pending: `Person → User` inheritance for additional OOP rubric
-  credit — current design keeps role as a plain attribute on `User`.
-
-## completed
+## Completion
 
 All ten user stories (registration, login, transaction CRUD, budgets,
 reporting, admin-only categories, and role-based access) are implemented,
-tested, and wired into a working CLI. See git history and pull requests
-for the individual contributions and the bugs found and fixed along the way.
+tested, and wired into a working CLI.

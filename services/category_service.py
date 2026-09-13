@@ -8,6 +8,11 @@ from services.data_store import DataStore
 from services.auth_manager import default_auth_manager
 from utils.decorators import admin_required
 from models.transaction import Category
+from rich.console import Console
+from rich.table import Table
+
+console = Console()
+
 
 _store = DataStore("categories.json")
 
@@ -30,12 +35,16 @@ def list_categories():
     """List all categories."""
     records = _store.load()
     if not records:
-        print("No categories yet.")
+        console.print("[yellow]No categories yet.[/yellow]")
         return []
-    for r in records:
-        print(f"#{r['id']}  {r['name']}")
-    return [Category.from_dict(r) for r in records]
 
+    table = Table(title="Categories")
+    table.add_column("ID", justify="right")
+    table.add_column("Name")
+    for r in records:
+        table.add_row(str(r["id"]), r["name"])
+    console.print(table)
+    return [Category.from_dict(r) for r in records]
 
 @admin_required(default_auth_manager)
 def edit_category(cat_id, name):

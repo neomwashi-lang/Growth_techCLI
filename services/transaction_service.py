@@ -11,6 +11,10 @@ from services.data_store import DataStore
 from services.auth_manager import default_auth_manager
 from utils.decorators import login_required
 from models.transaction import Transaction
+from rich.console import Console
+from rich.table import Table
+
+console = Console()
 
 _store = DataStore("transactions.json")
 
@@ -43,11 +47,24 @@ def list_transactions():
     mine = [r for r in records if r["user"] == user.username]
 
     if not mine:
-        print("No transactions yet.")
+        console.print("[yellow]No transactions yet.[/yellow]")
         return []
 
+    table = Table(title="Your Transactions")
+    table.add_column("ID", justify="right")
+    table.add_column("Date")
+    table.add_column("Category")
+    table.add_column("Amount", justify="right")
+    table.add_column("Description")
+
     for r in mine:
-        print(f"#{r['id']}  {r['date']}  {r['category']:<15} {r['amount']:>10}  {r['description']}")
+        style = "red" if r["amount"] < 0 else "green"
+        table.add_row(
+            str(r["id"]), r["date"], r["category"],
+            f"[{style}]{r['amount']:.2f}[/{style}]",
+            r["description"],
+        )
+    console.print(table)
     return [Transaction.from_dict(r) for r in mine]
 
 

@@ -8,6 +8,8 @@ from services.transaction_service import add_transaction, list_transactions, sho
 from utils.decorators import admin_required
 from services.budget_service import set_budget, list_budgets
 from services.report_service import generate_report
+from rich.console import Console
+console = Console()
 
 
 def build_parser():
@@ -117,10 +119,9 @@ def main(argv=None):
 			if result is None:
 				return 1
 	except ValueError as error:
-		print(f"Error: {error}", file=sys.stderr)
+		console.print(f"[bold red]Error:[/bold red] {error}", style="red")
 		return 1
 	return 0
-
 
 @admin_required(default_auth_manager)
 def _admin_status():
