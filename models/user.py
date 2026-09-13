@@ -5,6 +5,7 @@ User - role is a plain string ("user" / "admin").
 """
 
 import hashlib
+import hmac
 import os
 
 
@@ -32,7 +33,7 @@ class User:
 
     def check_password(self, password):
         hashed, _ = User.hash_password(password, salt=self.salt)
-        return hashed == self.password_hash
+        return hmac.compare_digest(hashed, self.password_hash)
 
     def to_dict(self):
         return {
