@@ -1,5 +1,5 @@
 # Growth_techCLI
-
+## trello url: https://trello.com/invite/b/6a9e878bad8d33a8b69e25cc/ATTI329d5f0a6d6f23004f436c379a941dffC41AABDA/growth-tech
 **Team**
 1. Neo Mwashi
 2. Ryan Ng'ang'a
@@ -145,7 +145,7 @@ Example session:
 - Decision pending: `Person → User` inheritance for additional OOP rubric
   credit — current design keeps role as a plain attribute on `User`.
 
-## Team
+## completed
 
 All ten user stories (registration, login, transaction CRUD, budgets,
 reporting, admin-only categories, and role-based access) are implemented,
