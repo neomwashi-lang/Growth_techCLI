@@ -15,7 +15,10 @@ from services.data_store import DataStore
 from services.auth_manager import default_auth_manager
 from utils.decorators import login_required
 from models.budget import Budget
-from tabulate import tabulate
+from rich.console import Console
+from rich.table import Table
+
+console = Console()
 
 _store = DataStore("budgets.json")
 
@@ -64,9 +67,14 @@ def list_budgets():
     mine = [r for r in records if r["user"] == user.username]
 
     if not mine:
-        print("No budgets set yet.")
+        console.print("[yellow]No budgets set yet.[/yellow]")
         return []
 
-    rows = [[r["category"], r["month"], r["limit"]] for r in mine]
-    print(tabulate(rows, headers=["Category", "Month", "Limit"]))
+    table = Table(title="Your Budgets")
+    table.add_column("Category")
+    table.add_column("Month")
+    table.add_column("Limit", justify="right")
+    for r in mine:
+        table.add_row(r["category"], r["month"], f"{r['limit']:.2f}")
+    console.print(table)
     return [Budget.from_dict(r) for r in mine]
