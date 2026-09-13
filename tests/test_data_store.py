@@ -11,11 +11,11 @@ def test_save_then_load_roundtrip(tmp_path):
     result = ds.load()
     assert result == [{"id": 1, "name": "test"}]
 
-def test_next_id_on_empty_records():
-    ds = DataStore("unused.json")
+def test_next_id_on_empty_records(tmp_path):
+    ds = DataStore(tmp_path / "unused.json")
     assert ds.next_id([]) == 1
 
-def test_next_id_increments_from_max():
-    ds = DataStore("unused.json")
+def test_next_id_increments_from_max(tmp_path):
+    ds = DataStore(tmp_path / "unused.json")
     records = [{"id": 1}, {"id": 5}, {"id": 2}]
     assert ds.next_id(records) == 6
